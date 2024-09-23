@@ -1,16 +1,18 @@
-// Load environment variables from .env file
 require('dotenv').config();
-
 const mongoose = require('mongoose');
-const startBot = require('./bot'); // Import the bot functionality
+const TelegramBot = require('node-telegram-bot-api');
+const teleRoutes = require('./routes/verifikasi');
 
-// Connect to MongoDB
+// Initialize the bot with token from .env
+const telebot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
+
+// Connect to local MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => {
-    console.log('Connected to MongoDB');
-  startBot();  // Start the bot after the DB connection is established
-}).catch((err) => {
-    console.error('Failed to connect to MongoDB', err);
-});
+    useUnifiedTopology: true
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('Failed to connect to MongoDB', err));
+
+// Run routing
+teleRoutes(telebot);

@@ -1,91 +1,59 @@
-const User = require('../models/User'); // Import User model
+const User = require('../models/User'); // Pastikan path ini sesuai
 
 module.exports = (telebot) => {
-    // Handle initial message
-    telebot.on("message", (callback) => {
-        const id = callback.from.id;
-
-        // Send message with "Masukan Token" button
-        telebot.sendMessage(id, 'Halo, Selamat Pagi! Silahkan masukan kode token anda', {
-            reply_markup: {
-                inline_keyboard: [[
-                    { text: 'Masukan Token', callback_data: 'input_token' }
-                ]]
-            }
-        });
+    // Handle command /start
+    telebot.onText(/\/start/, (msg) => {
+        const chatId = msg.chat.id;
+        telebot.sendMessage(chatId, 'Halo, Selamat Pagi! Silakan masukkan kode token Anda:');
+        telebot.startPolling();
     });
+    telebot.onText(/\/stopbot/, (msg) => {
+        const chatId = msg.chat.id;
+        telebot.sendMessage(chatId, 'semoga harimu tidak huhu');
+        telebot.stopPolling(); 
+    });
+    // Handle input token verification
+    telebot.on('message', async (msg) => {
+        const chatId = msg.chat.id;
+        const token = msg.text.trim(); // Mengambil teks yang dikirim pengguna sebagai token
 
-    // Handle button click
-    telebot.on('callback_query', (query) => {
-        const id = query.from.id;
+        // Cek apakah pesan yang dikirim adalah token (tidak memproses command atau teks selain token)
+        if (token.startsWith('/')) return; // Abaikan jika itu adalah perintah
 
-        if (query.data === 'input_token') {
-            telebot.sendMessage(id, 'Silakan masukan token anda.');
-            telebot.once('message', (callback) => {
-                const token = callback.text;
+        try {
+            // Verifikasi token dengan mencari di MongoDB
+            const user = await User.findOne({ 'Kode SF': token }).exec(); // Pastikan query dieksekusi
 
-                // Check if the token exists in MongoDB
-                User.findOne({ telegramId: id, token: token }, (err, user) => {
-                    if (err) {
-                        telebot.sendMessage(id, 'Terjadi kesalahan. Silakan coba lagi.');
-                    } else if (user) {
-                        // If token matches, show feature buttons
-                        telebot.sendMessage(id, 'Token valid! Silakan pilih fitur berikut:', {
-                            reply_markup: {
-                                inline_keyboard: [
-                                    [{ text: 'Fitur 1', callback_data: 'feature_1' }],
-                                    [{ text: 'Fitur 2', callback_data: 'feature_2' }],
-                                    [{ text: 'Fitur 3', callback_data: 'feature_3' }]
-                                ]
-                            }
-                        });
-                    } else {
-                        telebot.sendMessage(id, 'Token tidak valid. Silakan coba lagi.');
+            if (user) {
+                // Jika token valid, kirim fitur yang tersedia
+                console.log('Token valid:', user); // Log pengguna yang ditemukan
+                telebot.sendMessage(chatId, 'Token valid! Berikut fitur yang tersedia:', {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: 'Fitur 1', callback_data: 'feature_1' }],
+                            [{ text: 'Fitur 2', callback_data: 'feature_2' }]
+                        ]
                     }
                 });
-            });
+            } else {
+                // Jika token tidak valid
+                telebot.sendMessage(chatId, 'Token tidak valid, silakan coba lagi.');
+            }
+        } catch (error) {
+            console.error('Error verifying token:', error);
+            telebot.sendMessage(chatId, 'Terjadi kesalahan saat memverifikasi token.');
         }
     });
 
-    // Handle feature selection
-    telebot.on('callback_query', (query) => {
-        const id = query.from.id;
+    // Fitur callback untuk fitur
+    telebot.on('callback_query', (callbackQuery) => {
+        const msg = callbackQuery.message;
+        const chatId = msg.chat.id;
 
-        // Handle feature selection
-        switch (query.data) {
-            case 'feature_1':
-                telebot.sendMessage(id, 'Anda memilih Fitur 1. Menghubungi API yang berbeda...');
-                // Call your API for feature 1
-                feature1API(id); // Example function
-                break;
-            case 'feature_2':
-                telebot.sendMessage(id, 'Anda memilih Fitur 2. Menghubungi API yang berbeda...');
-                // Call your API for feature 2
-                feature2API(id); // Example function
-                break;
-            case 'feature_3':
-                telebot.sendMessage(id, 'Anda memilih Fitur 3. Menghubungi API yang berbeda...');
-                // Call your API for feature 3
-                feature3API(id); // Example function
-                break;
-            default:
-                telebot.sendMessage(id, 'Fitur tidak ditemukan.');
+        if (callbackQuery.data === 'feature_1') {
+            telebot.sendMessage(chatId, 'Anda telah memilih Fitur 1!');
+        } else if (callbackQuery.data === 'feature_2') {
+            telebot.sendMessage(chatId, 'Anda telah memilih Fitur 2!');
         }
     });
-
-    // Example API functions
-    function feature1API(id) {
-        // Logic for feature 1
-        telebot.sendMessage(id, 'Fitur 1 berhasil dijalankan!');
-    }
-
-    function feature2API(id) {
-        // Logic for feature 2
-        telebot.sendMessage(id, 'Fitur 2 berhasil dijalankan!');
-    }
-
-    function feature3API(id) {
-        // Logic for feature 3
-        telebot.sendMessage(id, 'Fitur 3 berhasil dijalankan!');
-    }
 };
