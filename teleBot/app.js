@@ -1,7 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
-const teleRoutes = require('./routes/verifikasi');
+const teleRoutes = require('./routes/login');
 const presensiRoutes = require('./routes/presensi');
 
 // Initialize the bot with token from .env

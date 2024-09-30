@@ -12,6 +12,8 @@
     "axios": "^1.7.7",
     "body-parser": "^1.20.3",
     "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-telegram-bot-api": "^0.66.0",
     "package": "^1.0.1"
   }
 }

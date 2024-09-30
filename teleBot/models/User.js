@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema({
     'Tahun Aktif': Number,
     'Bulan aktif': Number,
     'tgl Aktif': Number,
-    'yyyymm': Number
+    'yyyymm': Number,
+    'chatId': Number
 }, { collection: 'users' });
 
 module.exports = mongoose.model('User', userSchema);
