@@ -1,5 +1,6 @@
 const Presensi = require('../models/Presensi');
 const User = require('../models/User');
+const sessionManager = require('../other/session'); // Impor sessionManager
 
 const featureSelection = async (chatId, telebot) => {
     await telebot.sendMessage(chatId, 'Silakan pilih fitur lainnya:', {
@@ -14,14 +15,24 @@ const featureSelection = async (chatId, telebot) => {
     });
 };
 
+const checkLoginStatus = async (chatId, telebot) => {
+    const userStatus = sessionManager.getUserStatus(chatId); // Mengambil status login dari sessionManager
+
+    if (!userStatus || !userStatus.isLoggedIn) {
+        return false;
+    }
+    return true;
+};
+
 module.exports = (telebot) => {
-    // Handle ketika user memilih presensi
     telebot.on('callback_query', async (callbackQuery) => {
         const msg = callbackQuery.message;
         const chatId = msg.chat.id;
 
+        const isLoggedIn = await checkLoginStatus(chatId, telebot);
+        if (!isLoggedIn) return;
+
         if (callbackQuery.data === 'api_presensi') {
-            // Cek apakah user sudah login
             try {
                 const user = await User.findOne({ chatId }).exec();
                 if (!user) {
@@ -29,7 +40,6 @@ module.exports = (telebot) => {
                     return;
                 }
 
-                // Minta pengguna untuk membagikan lokasi
                 await telebot.sendMessage(chatId, 'Silakan aktifkan dan kirimkan lokasi Anda untuk melakukan presensi.', {
                     reply_markup: {
                         keyboard: [
@@ -47,10 +57,12 @@ module.exports = (telebot) => {
         }
     });
 
-    // Handle ketika user mengirim lokasi
     telebot.on('location', async (msg) => {
         const chatId = msg.chat.id;
         const { latitude, longitude } = msg.location;
+
+        const isLoggedIn = await checkLoginStatus(chatId, telebot);
+        if (!isLoggedIn) return;
 
         try {
             const user = await User.findOne({ chatId }).exec();
@@ -59,7 +71,6 @@ module.exports = (telebot) => {
                 return;
             }
 
-            // Simpan presensi ke database
             const newPresensi = new Presensi({
                 kodeSF: user['Kode SF'],
                 name: user['Name'],
@@ -71,7 +82,7 @@ module.exports = (telebot) => {
                 }
             });
 
-            await newPresensi.save(); // Simpan data presensi
+            await newPresensi.save(); 
             await telebot.sendMessage(chatId, 'Presensi berhasil disimpan!', {
                 reply_markup: {
                     remove_keyboard: true
@@ -86,9 +97,12 @@ module.exports = (telebot) => {
 
     telebot.onText(/Batal/, async (msg) => {
         const chatId = msg.chat.id;
+        const isLoggedIn = await checkLoginStatus(chatId, telebot);
+        if (!isLoggedIn) return;
+        
         telebot.sendMessage(chatId, 'Presensi dibatalkan.', {
             reply_markup: {
-                remove_keyboard: true 
+                remove_keyboard: true
             }
         });
         await featureSelection(chatId, telebot);
