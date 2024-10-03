@@ -53,7 +53,7 @@ module.exports = (telebot) => {
                         inline_keyboard: [
                             [{ text: 'Presensi', callback_data: 'api_presensi' }],
                             [{ text: 'KV Program', callback_data: 'api_kv' }],
-                            [{ text: 'Fitur 2', callback_data: 'feature_2' }],
+                            [{ text: 'DJP', callback_data: 'api_djp' }],
                             [{ text: 'Logout', callback_data: 'logout' }]
                         ]
                     }
@@ -81,9 +81,17 @@ module.exports = (telebot) => {
 
         if (callbackQuery.data === 'api_presensi') {
             try {
-                await presensiRoutes(kodeSF, chatId, telebot); // Memanggil fungsi presensi dengan parameter yang dibutuhkan
+                await presensiRoutes(kodeSF, chatId, telebot); 
             } catch (error) {
                 console.error('Error during presensi:', error);
+            }
+        }
+
+        if (callbackQuery.data === 'api_djp') {
+            try {
+                await djpRoutes(kodeSF, chatId, telebot);
+            } catch (error) {
+                console.error('Error during DJP retrieval:', error);
             }
         }
 
