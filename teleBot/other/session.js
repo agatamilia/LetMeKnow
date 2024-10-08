@@ -9,6 +9,7 @@ module.exports = {
         return loggedInUsers[chatId];
     },
     deleteUserStatus: (chatId) => {
+        console.log(`Menghapus session untuk chatId: ${chatId}`);
         delete loggedInUsers[chatId];
     }
 };

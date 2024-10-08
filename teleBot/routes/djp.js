@@ -15,13 +15,13 @@ const featureSelection = async (chatId, telebot) => {
     });
 };
 
-const checkLoginStatus = async (chatId, telebot) => {
+const checkLoginStatus = (chatId) => {
     const userStatus = sessionManager.getUserStatus(chatId); // Mengambil status login dari sessionManager
 
     if (!userStatus || !userStatus.isLoggedIn) {
         return false;
     }
-    return true;
+    return userStatus; // Return userStatus untuk akses kodeSF nantinya
 };
 
 module.exports = (telebot) => {
@@ -29,38 +29,54 @@ module.exports = (telebot) => {
         const msg = callbackQuery.message;
         const chatId = msg.chat.id;
 
-        const isLoggedIn = await checkLoginStatus(chatId, telebot);
-        if (!isLoggedIn) return;
+        // Cek status login dan ambil userStatus
+        const userStatus = checkLoginStatus(chatId);
+        if (!userStatus) {
+            return;
+        }
 
         if (callbackQuery.data === 'api_djp') {
             try {
-                const user = await User.findOne({ chatId }).exec();
+                // Cari user berdasarkan chatId (yang sebelumnya dihubungkan dengan Kode SF)
+                const user = await User.findOne({ 'Kode SF': userStatus.kodeSF }).exec();
+
                 if (!user) {
-                    telebot.sendMessage(chatId, 'Anda belum login.');
+                    await telebot.sendMessage(chatId, 'Data pengguna tidak ditemukan.');
                     return;
                 }
 
-                // Menggunakan find untuk mengambil semua data DJP berdasarkan Kode SF
-                const djpData = await DJP.find({ 'id sf': user['Kode SF'] }).exec();
+                const kodeSF = user['Kode SF'];
+
+                // Mengambil semua data DJP berdasarkan Kode SF yang sesuai
+                const djpData = await DJP.find({ 'id sf': kodeSF }).exec();
 
                 if (djpData.length > 0) {
-                    const userName = user['Name']; // Ambil nama pengguna
-                    const currentDate = new Date().toLocaleDateString('id-ID'); // Tanggal terkini
-                    const currentMonth = new Date().toLocaleString('id-ID', { month: 'long' }); // Bulan terkini
+                    // const userName = user['Name'];
+                    const currentDate = new Date().toLocaleDateString('id-ID');
+                    const currentMonth = new Date().toLocaleString('id-ID', { month: 'long' });
 
-                    // Membuat pesan untuk DJP
-                    let djpMessage = `HALO ${userName}, hari ini tanggal ${currentDate}, Daily journey plan mu pada bulan ${currentMonth} adalah:\n\n`;
+                    let djpMessage = `Hari ini tanggal ${currentDate}, Daily Journey Plan (DJP) Anda untuk bulan ${currentMonth} adalah:\n\n`;
 
-                    // Loop untuk setiap DJP dan buat format hyperlink
-                    djpData.forEach((djp, index) => {
-                        const formattedDate = `${djp.tgl}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
-                        djpMessage += `${index + 1}. <a href="${djp.map}">${formattedDate}</a>\n`;
+                    // Sort data DJP berdasarkan tanggal
+                    djpData.sort((a, b) => new Date(a.tgl) - new Date(b.tgl));
+                    const groupedDJP = djpData.reduce((acc, djp) => {
+                        const dateKey = `${djp.tgl}/${new Date().getMonth() + 1}/${new Date().getFullYear()}`;
+                        if (!acc[dateKey]) {
+                            acc[dateKey] = [];
+                        }
+                        acc[dateKey].push(`<a href="${djp.map}">Lokasi ${acc[dateKey].length + 1}</a>`);
+                        return acc;
+                    }, {});
+
+                    Object.keys(groupedDJP).forEach((dateKey) => {
+                        djpMessage += `• ${dateKey} = ${groupedDJP[dateKey].join(' > ')}\n`;
                     });
 
                     await telebot.sendMessage(chatId, djpMessage, { parse_mode: 'HTML' });
                 } else {
                     await telebot.sendMessage(chatId, 'Data DJP tidak ditemukan untuk Kode SF ini.');
                 }
+
                 await featureSelection(chatId, telebot);
             } catch (error) {
                 console.error('Error fetching DJP data:', error);
