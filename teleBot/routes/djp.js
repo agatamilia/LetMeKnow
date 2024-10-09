@@ -23,6 +23,25 @@ const checkLoginStatus = (chatId) => {
     }
     return userStatus; // Return userStatus untuk akses kodeSF nantinya
 };
+const sendLongMessageInBatches = async (telebot, chatId, messageByDates, batchSize = 4000) => {
+    let currentMessage = '';
+    
+    for (const messageChunk of messageByDates) {
+        // Jika menambahkan chunk ini akan melebihi batchSize, kirim pesan saat ini dan reset
+        if ((currentMessage.length + messageChunk.length) > batchSize) {
+            await telebot.sendMessage(chatId, currentMessage, { parse_mode: 'HTML' });
+            currentMessage = ''; // Reset pesan
+        }
+        
+        // Tambahkan chunk ke pesan saat ini
+        currentMessage += messageChunk + '\n'; // Tambahkan chunk dan buat baris baru
+    }
+
+    // Kirim sisa pesan yang mungkin belum terkirim
+    if (currentMessage.length > 0) {
+        await telebot.sendMessage(chatId, currentMessage, { parse_mode: 'HTML' });
+    }
+};
 
 module.exports = (telebot) => {
     telebot.on('callback_query', async (callbackQuery) => {
@@ -51,12 +70,13 @@ module.exports = (telebot) => {
                 const djpData = await DJP.find({ 'id sf': kodeSF }).exec();
 
                 if (djpData.length > 0) {
-                    // const userName = user['Name'];
                     const currentDate = new Date().toLocaleDateString('id-ID');
                     const currentMonth = new Date().toLocaleString('id-ID', { month: 'long' });
-
-                    let djpMessage = `Hari ini tanggal ${currentDate}, Daily Journey Plan (DJP) Anda untuk bulan ${currentMonth} adalah:\n\n`;
-
+                    let djpMessageByDates = [];
+                    
+                    const openingMessage = `Hari ini tanggal ${currentDate}, Daily Journey Plan Anda untuk bulan ${currentMonth} adalah:\n\n`;
+                    djpMessageByDates.push(openingMessage);
+                    
                     // Sort data DJP berdasarkan tanggal
                     djpData.sort((a, b) => new Date(a.tgl) - new Date(b.tgl));
                     const groupedDJP = djpData.reduce((acc, djp) => {
@@ -68,11 +88,14 @@ module.exports = (telebot) => {
                         return acc;
                     }, {});
 
+                    // Membangun pesan dengan bullet, menyatukan lokasi dengan tanggalnya
                     Object.keys(groupedDJP).forEach((dateKey) => {
-                        djpMessage += `• ${dateKey} = ${groupedDJP[dateKey].join(' > ')}\n`;
+                        const locations = groupedDJP[dateKey].join(' > '); // Menggabungkan semua lokasi
+                        djpMessageByDates.push(`• ${dateKey}: ${locations}\n`); // Menyimpan pesan per tanggal dalam array
                     });
 
-                    await telebot.sendMessage(chatId, djpMessage, { parse_mode: 'HTML' });
+                    // Kirim pesan per batch (per tanggal) dalam batas batchSize
+                    await sendLongMessageInBatches(telebot, chatId, djpMessageByDates);
                 } else {
                     await telebot.sendMessage(chatId, 'Data DJP tidak ditemukan untuk Kode SF ini.');
                 }
