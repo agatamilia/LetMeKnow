@@ -15,13 +15,10 @@ const featureSelection = async (chatId, telebot) => {
     });
 };
 
-const checkLoginStatus = async (chatId, telebot) => {
+const checkLoginStatus = (chatId) => {
     const userStatus = sessionManager.getUserStatus(chatId); // Mengambil status login dari sessionManager
 
-    if (!userStatus || !userStatus.isLoggedIn) {
-        return false;
-    }
-    return true;
+    return userStatus && userStatus.isLoggedIn;
 };
 
 module.exports = (telebot) => {
@@ -29,14 +26,20 @@ module.exports = (telebot) => {
         const msg = callbackQuery.message;
         const chatId = msg.chat.id;
 
-        const isLoggedIn = await checkLoginStatus(chatId, telebot);
-        if (!isLoggedIn) return;
+        const isLoggedIn = checkLoginStatus(chatId);
+        if (!isLoggedIn) {
+            await telebot.sendMessage(chatId, 'Anda harus login terlebih dahulu.');
+            return;
+        }
 
         if (callbackQuery.data === 'api_presensi') {
             try {
-                const user = await User.findOne({ chatId }).exec();
+                const userStatus = sessionManager.getUserStatus(chatId);
+                const kodeSF = userStatus.kodeSF; // Ambil Kode SF dari session
+                const user = await User.findOne({ 'Kode SF': kodeSF }).exec();
+
                 if (!user) {
-                    telebot.sendMessage(chatId, 'Anda belum login.');
+                    await telebot.sendMessage(chatId, 'Anda belum login.');
                     return;
                 }
 
@@ -61,13 +64,21 @@ module.exports = (telebot) => {
         const chatId = msg.chat.id;
         const { latitude, longitude } = msg.location;
 
-        const isLoggedIn = await checkLoginStatus(chatId, telebot);
+        const isLoggedIn = checkLoginStatus(chatId);
         if (!isLoggedIn) return;
 
         try {
-            const user = await User.findOne({ chatId }).exec();
+            const userStatus = sessionManager.getUserStatus(chatId);
+            const user = await User.findOne({ 'Kode SF': userStatus.kodeSF }).exec();
+
             if (!user) {
-                telebot.sendMessage(chatId, 'Anda belum login.');
+                await telebot.sendMessage(chatId, 'Anda belum login.');
+                return;
+            }
+
+            // Cek apakah Kode SF ada
+            if (!user['Kode SF']) {
+                await telebot.sendMessage(chatId, 'Kode SF tidak ditemukan, tidak dapat melakukan presensi.');
                 return;
             }
 
@@ -91,16 +102,16 @@ module.exports = (telebot) => {
             await featureSelection(chatId, telebot);
         } catch (error) {
             console.error('Error saving presensi:', error);
-            telebot.sendMessage(chatId, 'Terjadi kesalahan saat menyimpan presensi.');
+            await telebot.sendMessage(chatId, 'Terjadi kesalahan saat menyimpan presensi.');
         }
     });
 
     telebot.onText(/Batal/, async (msg) => {
         const chatId = msg.chat.id;
-        const isLoggedIn = await checkLoginStatus(chatId, telebot);
+        const isLoggedIn = checkLoginStatus(chatId);
         if (!isLoggedIn) return;
-        
-        telebot.sendMessage(chatId, 'Presensi dibatalkan.', {
+
+        await telebot.sendMessage(chatId, 'Presensi dibatalkan.', {
             reply_markup: {
                 remove_keyboard: true
             }
