@@ -9,6 +9,8 @@ const featureSelection = async (chatId, telebot) => {
                 [{ text: 'Presensi', callback_data: 'api_presensi' }],
                 [{ text: 'KV Program', callback_data: 'api_kv' }],
                 [{ text: 'DJP', callback_data: 'api_djp' }],
+                [{ text: 'Report', callback_data: 'api_report' }],
+                [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
                 [{ text: 'Logout', callback_data: 'logout' }]
             ]
         }
@@ -52,7 +54,6 @@ module.exports = (telebot) => {
         // Cek status login dan ambil userStatus
         const userStatus = checkLoginStatus(chatId);
         if (!userStatus) {
-            await telebot.sendMessage(chatId, 'Anda harus login terlebih dahulu.');
             return;
         }
 

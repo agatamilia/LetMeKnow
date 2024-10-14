@@ -1,48 +1,41 @@
-// sessionManager.js
+// other/session.js
+
 let loggedInUsers = {};
 
 module.exports = {
-    // Set status pengguna dengan chatId
+    // Set user status with chatId
     setUserStatus: (chatId, status) => {
-        loggedInUsers[chatId] = status;
-        console.log(`Status pengguna untuk chatId ${chatId} diatur.`);
+        // Preserve existing status while updating specific properties
+        loggedInUsers[chatId] = {
+            ...(loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false }),
+            ...status
+        };
+        console.log(`User status for chatId ${chatId} has been set.`);
     },
 
-    // Ambil status pengguna berdasarkan chatId
+    // Get user status by chatId
     getUserStatus: (chatId) => {
-        return loggedInUsers[chatId] || null; // Mengembalikan null jika tidak ada status
+        // Return user status or default values
+        return loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false };
     },
 
-    // Hapus status pengguna berdasarkan chatId
+    // Delete user status by chatId
     deleteUserStatus: (chatId) => {
         if (loggedInUsers[chatId]) {
-            console.log(`Menghapus session untuk chatId: ${chatId}`);
+            console.log(`Deleting session for chatId: ${chatId}`);
             delete loggedInUsers[chatId];
         } else {
-            console.log(`Tidak ada session yang ditemukan untuk chatId: ${chatId}`);
+            console.log(`No session found for chatId: ${chatId}`);
         }
     },
 
-    // Mengambil semua pengguna yang sedang login (opsional)
+    // Get all logged-in users (optional)
     getAllLoggedInUsers: () => {
         return loggedInUsers;
     },
 
-    // Cek apakah pengguna sedang login
+    // Check if a user is logged in
     isUserLoggedIn: (chatId) => {
         return !!loggedInUsers[chatId];
-    }
-};
-
-module.exports = {
-    setUserStatus: (chatId, status) => {
-        loggedInUsers[chatId] = status;
-    },
-    getUserStatus: (chatId) => {
-        return loggedInUsers[chatId];
-    },
-    deleteUserStatus: (chatId) => {
-        console.log(`Menghapus session untuk chatId: ${chatId}`);
-        delete loggedInUsers[chatId];
     }
 };

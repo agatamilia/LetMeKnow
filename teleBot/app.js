@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
 const teleRoutes = require('./routes/login');
 const presensiRoutes = require('./routes/presensi');
-const djpRoutes = require('./routes/djp')
+const djpRoutes = require('./routes/djp');
+const reportRoutes = require('./routes/report');
+//const kvRoutes= require('./routes/kv');
+const saranRoutes = require('./routes/saran');
 
 // Initialize the bot with token from .env
 const telebot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
@@ -19,4 +22,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Run routing
 teleRoutes(telebot);
 presensiRoutes(telebot);
-djpRoutes(telebot)
+djpRoutes(telebot);
+reportRoutes(telebot);
+//kvRoutes(telebot);
+saranRoutes(telebot);

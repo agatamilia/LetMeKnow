@@ -1,10 +1,11 @@
 const User = require('../models/User');
+const Saran = require('../models/Saran');
 const presensiRoutes = require('./presensi');
 const djpRoutes = require('./djp');
+const saranRoutes = require('./saran');
 const sessionManager = require('../other/session'); // Impor sessionManager
 
 module.exports = (telebot) => {
-    // Handle command /start
     telebot.onText(/\/start/, (msg) => {
         const chatId = msg.chat.id;
         sessionManager.setUserStatus(chatId, { isLoggedIn: false }); // Reset status login saat /start
@@ -35,6 +36,15 @@ module.exports = (telebot) => {
         // Abaikan pesan yang bukan token (misalnya command atau 'Stop')
         if (token.startsWith('/') || token === 'Stop' || token === 'Batal') return;
 
+        const userStatus = sessionManager.getUserStatus(chatId); // Ambil status pengguna
+
+        if (userStatus && userStatus.isLoggedIn) {
+            // User is already logged in, handle suggestion input
+            await handleSaran(chatId, telebot);
+            return;
+        }
+
+        // Verifikasi token
         try {
             const kodeSF = await User.findOne({ 'Kode SF': token }).exec();
             if (kodeSF) {
@@ -46,7 +56,8 @@ module.exports = (telebot) => {
                 sessionManager.setUserStatus(chatId, {
                     isLoggedIn: true,
                     kodeSF: kodeSF['Kode SF'],
-                    name: nama
+                    name: nama,
+                    awaitingSaran: false // Reset status menunggu saran
                 });
 
                 telebot.sendMessage(chatId, `Token valid! \n\nHalo ${nama}, silakan pilih fitur yang tersedia:`, {
@@ -55,6 +66,8 @@ module.exports = (telebot) => {
                             [{ text: 'Presensi', callback_data: 'api_presensi' }],
                             [{ text: 'KV Program', callback_data: 'api_kv' }],
                             [{ text: 'DJP', callback_data: 'api_djp' }],
+                            [{ text: 'Report', callback_data: 'api_report' }],
+                            [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],                            
                             [{ text: 'Logout', callback_data: 'logout' }]
                         ]
                     }
@@ -96,6 +109,22 @@ module.exports = (telebot) => {
             }
         }
 
+        if (callbackQuery.data === 'api_report') {
+            try {
+                await reportRoutes(kodeSF, chatId, telebot); // Call the report generation function
+            } catch (error) {
+                telebot.sendMessage(chatId, 'Terjadi kesalahan saat menghasilkan report.');
+            }
+        }
+
+        if (callbackQuery.data === 'api_saran') {
+            try {
+                await saranRoutes(kodeSF, chatId, telebot);
+            } catch (error) {
+                console.error('Error handling saran:', error);
+            }
+        }
+
         if (callbackQuery.data === 'logout') {
             sessionManager.deleteUserStatus(chatId); // Hapus status login user
             telebot.sendMessage(chatId, 'Anda telah logout. Silakan masukkan token baru untuk login.', {
@@ -106,3 +135,9 @@ module.exports = (telebot) => {
         }
     });
 };
+
+async function handleSaran(chatId, telebot) {
+    const userStatus = sessionManager.getUserStatus(chatId);
+    sessionManager.setUserStatus(chatId, { awaitingSaran: true }); // Set awaitingSaran to true
+
+}
