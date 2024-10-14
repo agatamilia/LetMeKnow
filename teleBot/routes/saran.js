@@ -45,6 +45,46 @@ module.exports = (telebot) => {
         }
     });
 
+    // telebot.on('text', async (msg) => {
+    //     const chatId = msg.chat.id;
+    //     const userStatus = sessionManager.getUserStatus(chatId);
+    
+    //     // Only proceed if the user is logged in
+    //     if (!userStatus || !userStatus.isLoggedIn) return;
+    
+    //     // Check if the user is awaiting a suggestion
+    //     if (userStatus.awaitingSaran) {
+    //         try {
+    //             const user = await User.findOne({ 'Kode SF': userStatus.kodeSF }).exec();
+    
+    //             if (!user) {
+    //                 await telebot.sendMessage(chatId, 'Pengguna tidak ditemukan.');
+    //                 return;
+    //             }
+    
+    //             const newSaran = new Saran({
+    //                 kodeSF: user['Kode SF'],
+    //                 name: user['Name'],
+    //                 saran: msg.text
+    //             });
+    
+    //             await newSaran.save();
+    //             await telebot.sendMessage(chatId, 'Terima kasih! Saran/komplain Anda telah disimpan.', {
+    //                 reply_markup: {
+    //                     remove_keyboard: true
+    //                 }
+    //             });
+    
+    //             sessionManager.setUserStatus(chatId, { awaitingSaran: false });
+    //             await featureSelection(chatId, telebot); // Show feature selection after saving suggestion
+    //         } catch (error) {
+    //             console.error('Error saving suggestion:', error);
+    //             await telebot.sendMessage(chatId, 'Terjadi kesalahan saat menyimpan saran/komplain.');
+    //         }
+    //     }
+    // });
+    
+
     telebot.on('text', async (msg) => {
         const chatId = msg.chat.id;
         const userStatus = sessionManager.getUserStatus(chatId);
@@ -54,6 +94,14 @@ module.exports = (telebot) => {
     
         // Check if the user is awaiting a suggestion
         if (userStatus.awaitingSaran) {
+            const suggestionText = msg.text;
+    
+            // Add character length validation
+            if (!suggestionText || suggestionText.trim().length < 7) {
+                await telebot.sendMessage(chatId, 'Saran / komplain terlalu pendek. Mohon berikan saran lebih detail.');
+                return;
+            }
+    
             try {
                 const user = await User.findOne({ 'Kode SF': userStatus.kodeSF }).exec();
     
@@ -65,7 +113,7 @@ module.exports = (telebot) => {
                 const newSaran = new Saran({
                     kodeSF: user['Kode SF'],
                     name: user['Name'],
-                    saran: msg.text
+                    saran: suggestionText
                 });
     
                 await newSaran.save();
@@ -83,8 +131,8 @@ module.exports = (telebot) => {
             }
         }
     });
-    
 
+    
     telebot.onText(/Batal/, async (msg) => {
         const chatId = msg.chat.id;
         if (!checkLoginStatus(chatId)) return;
