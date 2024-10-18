@@ -5,7 +5,7 @@ const teleRoutes = require('./routes/login');
 const presensiRoutes = require('./routes/presensi');
 const djpRoutes = require('./routes/djp');
 const reportRoutes = require('./routes/report');
-//const kvRoutes= require('./routes/kv');
+// const kvRoutes= require('./routes/kv');
 const saranRoutes = require('./routes/saran');
 
 // Initialize the bot with token from .env
@@ -24,5 +24,5 @@ teleRoutes(telebot);
 presensiRoutes(telebot);
 djpRoutes(telebot);
 reportRoutes(telebot);
-//kvRoutes(telebot);
+// kvRoutes(telebot);
 saranRoutes(telebot);

@@ -4,106 +4,107 @@ const moment = require('moment');
 const sessionManager = require('../other/session');
 moment.locale('id');
 
-const formatDateWithDay = (date) => {
-    if (!date || isNaN(new Date(date).getTime())) {
-        return null; 
-    }
-    // Format tanggal untuk pengelompokan (tanpa waktu) dan menampilkan hari
-    return moment(date).format('DD/MM/YYYY - dddd');
-};
-
-const getDateKey = (date) => {
-    if (!date || isNaN(new Date(date).getTime())) {
-        return null; 
-    }
-    // Hanya gunakan bagian tanggal untuk pengelompokan
-    return moment(date).format('YYYY-MM-DD');
-};
-
-const generateReport = async (kodeSF) => {
-    try {
-        console.log('Searching for user with Kode SF:', kodeSF);
-        const user = await User.findOne({ 'Kode SF': kodeSF });
-        if (!user) throw new Error('User not found');
-
-        console.log('User found:', user['Name']);
-
-        const reports = await Report.find({ sf: kodeSF }).sort({ order_id: 1, event_date: -1 }).exec();
-        console.log('Reports found:', reports.length);
-
-        const eventCounts = {};
-        const processedOrderIds = new Set();
-
-        reports.forEach(report => {
-            // Skip already processed order_ids
-            if (processedOrderIds.has(report.order_id)) return;
-
-            // Mark order_id as processed
-            processedOrderIds.add(report.order_id);
-
-            // Safely format the event date for key
-            const eventKey = getDateKey(report.event_date); // Kunci pengelompokan (hanya tanggal)
-            if (!eventKey) return;
-
-            // Initialize event date count if not already present
-            if (!eventCounts[eventKey]) {
-                // Include the formatted date with day for display
-                eventCounts[eventKey] = {
-                    formattedDate: formatDateWithDay(report.event_date), // Tanggal dengan hari untuk tampilan
-                    IO: 0,
-                    RE: 0,
-                    PS: 0
-                };
-            }
-
-            // Increment counts based on io_ts, re_ts, and ps_ts
-            eventCounts[eventKey].IO += report.io_ts ? 1 : 0;
-            eventCounts[eventKey].RE += report.re_ts ? 1 : 0;
-            eventCounts[eventKey].PS += report.ps_ts ? 1 : 0;
-        });
-
-        if (Object.keys(eventCounts).length === 0) {
-            return `Tidak ada data untuk ${user['Name']} (Kode SF: ${kodeSF}).`;
+const featureSelection = async (chatId, telebot) => {
+    await telebot.sendMessage(chatId, 'Silakan pilih fitur lainnya:', {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: 'Presensi', callback_data: 'api_presensi' }],
+                [{ text: 'KV Program', callback_data: 'api_kv' }],
+                [{ text: 'DJP', callback_data: 'api_djp' }],
+                [{ text: 'Report', callback_data: 'api_report' }],
+                [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
+                [{ text: 'Logout', callback_data: 'logout' }]
+            ]
         }
-
-        // Generate report string
-        let reportString = `Report for ${user['Name']} (Kode SF: ${kodeSF}):\n\n`;
-        reportString += `Tanggal  - Hari = IO | RE | PS |\n`;
-
-        for (const { formattedDate, IO, RE, PS } of Object.values(eventCounts)) {
-            reportString += `${formattedDate} = ${IO} | ${RE} | ${PS}\n`;
-        }
-
-        return reportString;
-
-    } catch (err) {
-        console.error('Error generating report:', err);
-        return 'An error occurred while generating the report.';
-    }
+    });
 };
 
+const getHari = (tanggal) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return days[moment(tanggal).day()];
+};
 
 module.exports = (telebot) => {
-    telebot.on('callback_query', async (callbackQuery) => {
-        const msg = callbackQuery.message;
-        const chatId = msg.chat.id;
-
-        const userStatus = sessionManager.getUserStatus(chatId);
-        if (!userStatus || !userStatus.isLoggedIn) {
-            return;
-        }
-
-        if (callbackQuery.data === 'api_report') {
-            try {
-                const kodeSF = userStatus.kodeSF;
-                console.log('Kode SF retrieved from session:', kodeSF);
-
-                const report = await generateReport(kodeSF);
-                await telebot.sendMessage(chatId, report);
-            } catch (error) {
-                console.error('Error while fetching the report:', error);
-                await telebot.sendMessage(chatId, 'Error while fetching the report.');
+    const generateReport = async (chatId) => {
+        try {
+            const userStatus = sessionManager.getUserStatus(chatId);
+            
+            // Periksa apakah user sudah login
+            if (!userStatus || !userStatus.isLoggedIn) {
+                await telebot.sendMessage(chatId, 'Anda belum login. Silakan login terlebih dahulu.');
+                return;
             }
+            
+            const kodeSF = userStatus.kodeSF; 
+            
+            // Ambil data report berdasarkan kode SF dan bulan sekarang
+            const reports = await Report.find({
+                'kode sf': kodeSF,
+                $or: [
+                    { io_ts: { $gte: moment().startOf('month').format('DD/MM/YYYY'), $lt: moment().endOf('month').format('DD/MM/YYYY') } },
+                    { re_ts: { $gte: moment().startOf('month').format('DD/MM/YYYY'), $lt: moment().endOf('month').format('DD/MM/YYYY') } },
+                    { ps_ts: { $gte: moment().startOf('month').format('DD/MM/YYYY'), $lt: moment().endOf('month').format('DD/MM/YYYY') } }
+                ]
+            });
+
+            // Data untuk menyimpan IO, RE, PS per tanggal
+            const reportSummary = {};
+
+            // Inisialisasi report kosong untuk setiap hari dalam bulan ini
+            const startOfMonth = moment().startOf('month');
+            const endOfMonth = moment().endOf('month');
+            for (let day = startOfMonth; day.isBefore(endOfMonth); day.add(1, 'day')) {
+                const dateStr = day.format('DD/MM/YYYY');
+                reportSummary[dateStr] = { io: 0, re: 0, ps: 0, hari: getHari(day) };
+            }
+
+            // Proses data report untuk menghitung jumlah IO, RE, PS per tanggal
+            reports.forEach(report => {
+                if (report.io_ts) {
+                    const ioDate = moment(report.io_ts, 'DD/MM/YYYY').format('DD/MM/YYYY');
+                    reportSummary[ioDate].io++;
+                }
+                if (report.re_ts) {
+                    const reDate = moment(report.re_ts, 'DD/MM/YYYY').format('DD/MM/YYYY');
+                    reportSummary[reDate].re++;
+                }
+                if (report.ps_ts) {
+                    const psDate = moment(report.ps_ts, 'DD/MM/YYYY').format('DD/MM/YYYY');
+                    reportSummary[psDate].ps++;
+                }
+            });
+
+            let message = '';
+            if (Object.keys(reportSummary).length === 0) {
+                message = 'Tidak ada laporan yang ditemukan untuk bulan ini.';
+            } else {
+                const currentMonth = moment().format('MMMM YYYY');
+                message = `Halo, report kamu pada bulan sekarang ${currentMonth} adalah:\n`;
+                message += 'Tanggal - Hari = IO | RE | PS\n';
+                Object.keys(reportSummary).forEach(date => {
+                    const { io, re, ps, hari } = reportSummary[date];
+                    message += `${date} - ${hari} = ${io} | ${re} | ${ps}\n`;
+                });
+            }
+
+            if (message.trim() === '') {
+                await telebot.sendMessage(chatId, 'Tidak ada data laporan yang ditemukan.');
+            } else {
+                await telebot.sendMessage(chatId, message);
+                featureSelection(chatId, telebot);
+            }
+        } catch (error) {
+            console.error('Error generating report:', error);
+            await telebot.sendMessage(chatId, 'Terjadi kesalahan saat menghasilkan laporan. Silakan coba lagi nanti.');
+        }
+    };
+
+    telebot.on('callback_query', async (callbackQuery) => {
+        const chatId = callbackQuery.message.chat.id;
+        const data = callbackQuery.data;
+
+        if (data === 'api_report') {
+            await generateReport(chatId);
         }
     });
 };

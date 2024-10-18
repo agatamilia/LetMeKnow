@@ -1,8 +1,9 @@
 const User = require('../models/User');
-const Saran = require('../models/Saran');
+// const Saran = require('../models/Saran');
 const presensiRoutes = require('./presensi');
 const djpRoutes = require('./djp');
 const saranRoutes = require('./saran');
+const kvRoutes = require('./kv')
 const sessionManager = require('../other/session'); // Impor sessionManager
 
 module.exports = (telebot) => {
@@ -64,9 +65,9 @@ module.exports = (telebot) => {
                     reply_markup: {
                         inline_keyboard: [
                             [{ text: 'Presensi', callback_data: 'api_presensi' }],
-                            [{ text: 'KV Program', callback_data: 'api_kv' }],
                             [{ text: 'DJP', callback_data: 'api_djp' }],
                             [{ text: 'Report', callback_data: 'api_report' }],
+                            [{ text: 'KV Program', callback_data: 'api_kv' }],
                             [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],                            
                             [{ text: 'Logout', callback_data: 'logout' }]
                         ]
@@ -103,7 +104,7 @@ module.exports = (telebot) => {
 
         if (callbackQuery.data === 'api_djp') {
             try {
-                await djpRoutes(kodeSF, chatId, telebot);
+                await djpRoutes(chatId, telebot);
             } catch (error) {
                 console.error('Error during DJP retrieval:', error);
             }
@@ -111,9 +112,17 @@ module.exports = (telebot) => {
 
         if (callbackQuery.data === 'api_report') {
             try {
-                await reportRoutes(kodeSF, chatId, telebot); // Call the report generation function
+                await reportRoutes(chatId, telebot); // Call the report generation function
             } catch (error) {
-                telebot.sendMessage(chatId, 'Terjadi kesalahan saat menghasilkan report.');
+                telebot.sendMessage('Terjadi kesalahan saat menghasilkan report.', error);
+            }
+        }
+
+        if (callbackQuery.data === 'api_kv') {
+            try {
+                await kvRoutes(kodeSF, chatId, telebot); // Call the report generation function
+            } catch (error) {
+                telebot.sendMessage(chatId, 'Terjadi kesalahan saat menghasilkan KV program.');
             }
         }
 

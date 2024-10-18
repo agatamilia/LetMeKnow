@@ -7,9 +7,9 @@ const featureSelection = async (chatId, telebot) => {
         reply_markup: {
             inline_keyboard: [
                 [{ text: 'Presensi', callback_data: 'api_presensi' }],
-                [{ text: 'KV Program', callback_data: 'api_kv' }],
                 [{ text: 'DJP', callback_data: 'api_djp' }],
                 [{ text: 'Report', callback_data: 'api_report' }],
+                [{ text: 'KV Program', callback_data: 'api_kv' }],
                 [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
                 [{ text: 'Logout', callback_data: 'logout' }]
             ]
@@ -96,6 +96,8 @@ module.exports = (telebot) => {
                 }
 
                 await featureSelection(chatId, telebot);
+            sessionManager.setUserStatus(chatId, { awaitingSaran: false }); // Reset status setelah menyimpan
+
             } catch (error) {
                 console.error('Error fetching DJP data:', error);
                 await telebot.sendMessage(chatId, 'Terjadi kesalahan saat mengambil data DJP.');
