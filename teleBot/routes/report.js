@@ -53,7 +53,8 @@ module.exports = (telebot) => {
             // Inisialisasi report kosong untuk setiap hari dalam bulan ini
             const startOfMonth = moment().startOf('month');
             const endOfMonth = moment().endOf('month');
-            for (let day = startOfMonth; day.isBefore(endOfMonth); day.add(1, 'day')) {
+            const today = moment();  // Mengambil tanggal saat ini
+            for (let day = startOfMonth; day.isBefore(endOfMonth) && day.isSameOrBefore(today); day.add(1, 'day')) {
                 const dateStr = day.format('DD/MM/YYYY');
                 reportSummary[dateStr] = { io: 0, re: 0, ps: 0, hari: getHari(day) };
             }
