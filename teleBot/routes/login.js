@@ -49,7 +49,7 @@ module.exports = (telebot) => {
         try {
             const kodeSF = await User.findOne({ 'Kode SF': token }).exec();
             if (kodeSF) {
-                const nama = kodeSF['Name'];
+                const nama = kodeSF['Name SF'];
                 kodeSF.chatId = chatId;
                 await kodeSF.save();
 

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const presensiSchema = new mongoose.Schema({
     kodeSF: String,
     name: String,
+    presensiType: String,
     tanggal: String,
     waktu: String,
     lokasi: {

@@ -2,18 +2,15 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
     'NO': Number,
+    'Branch': String,
+    'Cluster': String,
+    'Agency': String,
     'Nama SPV': String,
     'Kode SPV': String,
     'Kode SF': String, 
+    'Name SF': String,
     'Name': String,
-    'Agency': String,
-    'Cluster': String,
-    'Branch': String,
-    'Cluster Agency': String,
     'Tahun Aktif': Number,
-    'Bulan aktif': Number,
-    'tgl Aktif': Number,
-    'yyyymm': Number,
     'chatId': Number
 }, { collection: 'users' });
 
