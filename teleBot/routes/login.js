@@ -85,7 +85,7 @@ module.exports = (telebot) => {
                             [{ text: 'Report', callback_data: 'api_report' }],
                             [{ text: 'KV Program', callback_data: 'api_kv' }],
                             [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
-                            // [{ text: 'Logout', callback_data: 'logout' }]
+                            // [{ text: 'Logout', callback_data: 'logout' }] adih
                         ]
                     }
                 });
