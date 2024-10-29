@@ -1,5 +1,3 @@
-    // other/session.js
-
     let loggedInUsers = {};
 
     module.exports = {
@@ -28,14 +26,14 @@
                 console.log(`No session found for chatId: ${chatId}`);
             }
         },
+        
+        // Check if a user is logged in
+        isUserLoggedIn: (chatId) => {
+            return !!loggedInUsers[chatId];
+        },
 
         // Get all logged-in users (optional)
         getAllLoggedInUsers: () => {
             return loggedInUsers;
-        },
-
-        // Check if a user is logged in
-        isUserLoggedIn: (chatId) => {
-            return !!loggedInUsers[chatId];
         }
     };

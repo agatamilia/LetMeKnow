@@ -31,36 +31,52 @@ module.exports = (telebot) => {
     telebot.on('message', async (msg) => {
         const chatId = msg.chat.id;
 
+        // Check if message contains text
         if (!msg.text) return;
+
         const token = msg.text.trim();
 
-        // Abaikan pesan yang bukan token (misalnya command atau 'Stop')
+        // Ignore non-token messages (commands or specific text)
         if (token.startsWith('/') || token === 'Stop' || token === 'Batal') return;
 
-        const userStatus = sessionManager.getUserStatus(chatId); // Ambil status pengguna
-
-        if (userStatus && userStatus.isLoggedIn) {
+        // Retrieve user status from session manager
+        const userStatus = sessionManager.getUserStatus(chatId);
+        if (userStatus.isLoggedIn) {
             // User is already logged in, handle suggestion input
             await handleSaran(chatId, telebot);
             return;
         }
 
-        // Verifikasi token
+        // Token verification
         try {
+            console.log('Received token for verification:', token); // Debugging line
             const kodeSF = await User.findOne({ 'Kode SF': token }).exec();
+
+            // Log the result of the query for debugging
             if (kodeSF) {
+                console.log('Token verified successfully:', kodeSF); // Debugging line
                 const nama = kodeSF['Name SF'];
+
+                // Check if chatId is already associated with another kodeSF
+                const existingUser = await User.findOne({ chatId }).exec();
+                if (existingUser && existingUser['Kode SF'] !== kodeSF['Kode SF']) {
+                    telebot.sendMessage(chatId, `Anda sudah terdaftar dengan kode SF ${existingUser['Kode SF']}. Silakan mencoba dengan kode SF yang baru.`);
+                    return;
+                }
+
+                // Associate the chatId with the kodeSF
                 kodeSF.chatId = chatId;
                 await kodeSF.save();
 
-                // Simpan status login ke sessionManager
+                // Save login status in sessionManager
                 sessionManager.setUserStatus(chatId, {
                     isLoggedIn: true,
                     kodeSF: kodeSF['Kode SF'],
                     name: nama,
-                    awaitingSaran: false // Reset status menunggu saran
+                    awaitingSaran: false // Reset status waiting for suggestions
                 });
 
+                // Send success message with available features
                 telebot.sendMessage(chatId, `Token valid! \n\nHalo ${nama}, silakan pilih fitur yang tersedia:`, {
                     reply_markup: {
                         inline_keyboard: [
@@ -68,12 +84,13 @@ module.exports = (telebot) => {
                             [{ text: 'DJP', callback_data: 'api_djp' }],
                             [{ text: 'Report', callback_data: 'api_report' }],
                             [{ text: 'KV Program', callback_data: 'api_kv' }],
-                            [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],                            
-                            [{ text: 'Logout', callback_data: 'logout' }]
+                            [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
+                            // [{ text: 'Logout', callback_data: 'logout' }]
                         ]
                     }
                 });
             } else {
+                console.log('Token not found in database:', token); // Debugging line
                 telebot.sendMessage(chatId, 'Token tidak valid, silakan coba lagi.');
             }
         } catch (error) {
@@ -81,6 +98,7 @@ module.exports = (telebot) => {
             telebot.sendMessage(chatId, 'Terjadi kesalahan saat memverifikasi token.');
         }
     });
+
 
     // Handle callback query
     telebot.on('callback_query', async (callbackQuery) => {
@@ -134,19 +152,43 @@ module.exports = (telebot) => {
             }
         }
 
-        if (callbackQuery.data === 'logout') {
-            sessionManager.deleteUserStatus(chatId); // Hapus status login user
-            telebot.sendMessage(chatId, 'Anda telah logout. Silakan masukkan token baru untuk login.', {
-                reply_markup: {
-                    remove_keyboard: true 
-                }
-            });
-        }
+        // if (callbackQuery.data === 'logout') {
+        //     sessionManager.deleteUserStatus(chatId); // Hapus status login user 
+        //     telebot.sendMessage(chatId, 'Anda telah logout. Silakan masukkan token baru untuk login.', {
+        //         reply_markup: {
+        //             remove_keyboard: true 
+        //         }
+        //     });
+        // }
+        // if (callbackQuery.data === 'logout') {
+        //     const userStatus = sessionManager.getUserStatus(chatId);
+        //     if (userStatus && userStatus.kodeSF) {
+        //         // Cari pengguna di database berdasarkan Kode SF
+        //         await User.updateOne(
+        //             { 'Kode SF': userStatus.kodeSF },
+        //             { $unset: { chatId: "" } } // Hapus chatId dari pengguna
+        //         );
+        //     }
+            
+        //     sessionManager.deleteUserStatus(chatId); // Hapus status login user
+        //     telebot.sendMessage(chatId, 'Anda telah logout. Silakan masukkan token baru untuk login.', {
+        //         reply_markup: {
+        //             remove_keyboard: true 
+        //         }
+        //     });
+        // }
     });
 };
 
 async function handleSaran(chatId, telebot) {
     const userStatus = sessionManager.getUserStatus(chatId);
-    sessionManager.setUserStatus(chatId, { awaitingSaran: true }); // Set awaitingSaran to true
-
+    if (!userStatus || !userStatus.isLoggedIn) {
+        telebot.sendMessage(chatId, 'Anda belum login.');
+        return;
+    }
+    if (userStatus.awaitingSaran) {
+        // Proceed with saran handling logic here
+    } else {
+        console.log("User is not logged in or not awaiting suggestion. Exiting.");
+    }
 }
