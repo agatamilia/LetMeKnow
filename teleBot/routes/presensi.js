@@ -8,11 +8,11 @@ const featureSelection = async (chatId, telebot) => {
         reply_markup: {
             inline_keyboard: [
                 [{ text: 'Presensi', callback_data: 'api_presensi' }],
-                [{ text: 'KV Program', callback_data: 'api_kv' }],
+                // [{ text: 'KV Program', callback_data: 'api_kv' }],
                 [{ text: 'DJP', callback_data: 'api_djp' }],
                 [{ text: 'Report', callback_data: 'api_report' }],
                 [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
-                [{ text: 'Logout', callback_data: 'logout' }]
+                // [{ text: 'Logout', callback_data: 'logout' }]
             ],
             resize_keyboard: true
         }
@@ -37,7 +37,14 @@ const presensiTypeSelection = async (chatId, telebot) => {
 // Function to check login status
 const checkLoginStatus = (chatId) => {
     const userStatus = sessionManager.getUserStatus(chatId); 
-    return userStatus && userStatus.isLoggedIn;
+    if (!userStatus) {
+        return false;
+    }
+    // Check if user is logged in and session is not expired
+    if (!userStatus.isLoggedIn || userStatus.isExpired) {
+        return false;
+    }
+    return true;
 };
 
 // Main bot functionality
@@ -81,10 +88,14 @@ module.exports = (telebot) => {
     // Handle location sharing
     telebot.on('location', async (msg) => {
         const chatId = msg.chat.id;
+        const isLoggedIn = checkLoginStatus(chatId);
+        if (!isLoggedIn) {
+            return; // Hentikan pemrosesan lebih lanjut
+        }
+
+
         const { latitude, longitude } = msg.location;
 
-        const isLoggedIn = checkLoginStatus(chatId);
-        if (!isLoggedIn) return;
 
         try {
             const userStatus = sessionManager.getUserStatus(chatId);
@@ -134,12 +145,5 @@ module.exports = (telebot) => {
         const chatId = msg.chat.id;
         const isLoggedIn = checkLoginStatus(chatId);
         if (!isLoggedIn) return;
-
-        await telebot.sendMessage(chatId, 'Presensi dibatalkan.', {
-            reply_markup: {
-                remove_keyboard: true
-            }
-        });
-        await featureSelection(chatId, telebot); // Return to feature selection
     });
 };

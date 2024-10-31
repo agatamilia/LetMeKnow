@@ -1,39 +1,52 @@
-    let loggedInUsers = {};
+const loggedInUsers = {};
+const sessionDuration = 1 * 60 * 1000; // 1 menit
 
-    module.exports = {
-        // Set user status with chatId
-        setUserStatus: (chatId, status) => {
-            // Preserve existing status while updating specific properties
-            loggedInUsers[chatId] = {
-                ...(loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false }),
-                ...status
-            };
-            console.log(`User status for chatId ${chatId} has been set.`);
-        },
+module.exports = {
+    setUserStatus: (chatId, status) => {
+        loggedInUsers[chatId] = {
+            ...(loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false, isStopped: false, wasExpired: false }),
+            ...status,
+            timeout: loggedInUsers[chatId]?.timeout // Simpan timeout lama
+        };
 
-        // Get user status by chatId
-        getUserStatus: (chatId) => {
-            // Return user status or default values
-            return loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false };
-        },
-
-        // Delete user status by chatId
-        deleteUserStatus: (chatId) => {
-            if (loggedInUsers[chatId]) {
-                console.log(`Deleting session for chatId: ${chatId}`);
-                delete loggedInUsers[chatId];
-            } else {
-                console.log(`No session found for chatId: ${chatId}`);
+        // Mengatur timeout sesi
+        if (status.isLoggedIn) {
+            if (loggedInUsers[chatId].timeout) {
+                clearTimeout(loggedInUsers[chatId].timeout);
             }
-        },
-        
-        // Check if a user is logged in
-        isUserLoggedIn: (chatId) => {
-            return !!loggedInUsers[chatId];
-        },
 
-        // Get all logged-in users (optional)
-        getAllLoggedInUsers: () => {
-            return loggedInUsers;
+            loggedInUsers[chatId].timeout = setTimeout(() => {
+                console.log(`Session expired for chatId: ${chatId}`);
+                loggedInUsers[chatId].isExpired = true;
+                loggedInUsers[chatId].wasExpired = true; // Tandai bahwa sesi telah kadaluwarsa
+            }, sessionDuration);
         }
-    };
+
+        console.log(`User status for chatId ${chatId} has been set.`);
+    },
+    getUserStatus: (chatId) => {
+        return loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false, isStopped: false, wasExpired: false };
+    },
+    deleteUserStatus: (chatId) => {
+        if (loggedInUsers[chatId]) {
+            console.log(`Deleting session for chatId: ${chatId}`);
+            clearTimeout(loggedInUsers[chatId].timeout);
+            delete loggedInUsers[chatId];
+        } else {
+            console.log(`No session found for chatId: ${chatId}`);
+        }
+    },
+    isUserLoggedIn: (chatId) => {
+        return !!loggedInUsers[chatId] && !loggedInUsers[chatId].isStopped;
+    },
+    stopUserSession: (chatId) => {
+        if (loggedInUsers[chatId]) {
+            loggedInUsers[chatId].isStopped = true;
+        }
+    },
+    resetStoppedStatus: (chatId) => {
+        if (loggedInUsers[chatId]) {
+            loggedInUsers[chatId].isStopped = false;
+        }
+    }
+};

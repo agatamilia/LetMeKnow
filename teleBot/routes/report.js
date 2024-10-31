@@ -140,11 +140,11 @@ const featureSelection = async (chatId, telebot) => {
         reply_markup: {
             inline_keyboard: [
                 [{ text: 'Presensi', callback_data: 'api_presensi' }],
-                [{ text: 'KV Program', callback_data: 'api_kv' }],
+                // [{ text: 'KV Program', callback_data: 'api_kv' }],
                 [{ text: 'DJP', callback_data: 'api_djp' }],
                 [{ text: 'Report', callback_data: 'api_report' }],
                 [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
-                [{ text: 'Logout', callback_data: 'logout' }]
+                // [{ text: 'Logout', callback_data: 'logout' }]
             ]
         }
     });
@@ -162,6 +162,10 @@ const generateReport = async (chatId, telebot) => {
         // Periksa apakah user sudah login
         if (!userStatus || !userStatus.isLoggedIn) {
             await telebot.sendMessage(chatId, 'Anda belum login. Silakan login terlebih dahulu.');
+            return;
+        }
+        if (userStatus.isExpired) {
+            await telebot.sendMessage(chatId, 'Sesi Anda telah berakhir. Silakan login kembali dengan mengetik /start.');
             return;
         }
         
