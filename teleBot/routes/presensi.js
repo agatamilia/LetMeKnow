@@ -11,7 +11,8 @@ const featureSelection = async (chatId, telebot) => {
                 // [{ text: 'KV Program', callback_data: 'api_kv' }],
                 [{ text: 'DJP', callback_data: 'api_djp' }],
                 [{ text: 'Report', callback_data: 'api_report' }],
-                [{ text: 'Saran / Komplain', callback_data: 'api_saran' }],
+                [{ text: 'Program KV', callback_data: 'api_kv' }],
+                [{ text: 'Saran / Komplain', callback_data: 'api_saran' }]
                 // [{ text: 'Logout', callback_data: 'logout' }]
             ],
             resize_keyboard: true
@@ -27,7 +28,8 @@ const presensiTypeSelection = async (chatId, telebot) => {
                 [{ text: 'Morning Briefing', callback_data: 'presensi_Morning Briefing' }],
                 [{ text: 'DJP', callback_data: 'presensi_DJP' }],
                 [{ text: 'D2D', callback_data: 'presensi_D2D' }],
-                [{ text: 'Event', callback_data: 'presensi_Event' }]
+                [{ text: 'Event', callback_data: 'presensi_Event' }],
+                [{ text: 'New ODP Go-Live', callback_data: 'presensi_New ODP Go-Live' }]                
             ],
             resize_keyboard: true // Ensure the buttons are small and fit well
         }
@@ -65,7 +67,7 @@ module.exports = (telebot) => {
         }
 
         // Capture presensi type selection and move to location input
-        const presensiTypes = ['presensi_Morning Briefing', 'presensi_DJP', 'presensi_D2D', 'presensi_Event'];
+        const presensiTypes = ['presensi_Morning Briefing', 'presensi_DJP', 'presensi_D2D', 'presensi_Event', 'presensi_New ODP Go-Live'];
         if (presensiTypes.includes(callbackQuery.data)) {
             const presensiType = callbackQuery.data.split('_')[1]; // Extract the presensi type
             const userStatus = sessionManager.getUserStatus(chatId);

@@ -1,49 +1,77 @@
-// const KV = require('../models/KV');
-// const User = require('../models/User');
-// const sessionManager = require('../other/session');
-// const { getDriveFiles } = require('../other/googleDrive'); // Import Google Drive function
+const cloudinary = require('cloudinary').v2;
+const sessionManager = require('../other/session');
 
-// // Function to handle feature selection
-// const featureSelection = async (chatId, telebot) => {
-//     await telebot.sendMessage(chatId, 'Silakan pilih fitur KV:', {
-//         reply_markup: {
-//             inline_keyboard: [
-//                 [{ text: 'Tambah KV', callback_data: 'add_kv' }],
-//                 [{ text: 'Lihat KV', callback_data: 'view_kv' }],
-//                 [{ text: 'Lihat File PDF/Images', callback_data: 'view_files' }],  // New button for viewing files
-//                 [{ text: 'Hapus KV', callback_data: 'delete_kv' }],
-//                 [{ text: 'Kembali ke Menu Utama', callback_data: 'main_menu' }]
-//             ]
-//         }
-//     });
-// };
+const featureSelection = async (chatId, telebot) => {
+    await telebot.sendMessage(chatId, 'Silakan pilih fitur lainnya:', {
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: 'Presensi', callback_data: 'api_presensi' }],
+                [{ text: 'DJP', callback_data: 'api_djp' }],
+                [{ text: 'Report', callback_data: 'api_report' }],
+                [{ text: 'Program KV', callback_data: 'api_kv' }],
+                [{ text: 'Saran / Komplain', callback_data: 'api_saran' }]
+            ]
+        }
+    });
+};
 
-// // Function to display Google Drive files
-// const showDriveFiles = async (chatId, telebot) => {
-//     const files = await getDriveFiles();
+const checkLoginStatus = (chatId) => {
+    const userStatus = sessionManager.getUserStatus(chatId); 
+    return userStatus && userStatus.isLoggedIn && !userStatus.isExpired;
+};
 
-//     if (files.length === 0) {
-//         return telebot.sendMessage(chatId, 'Tidak ada file yang ditemukan.');
-//     }
+module.exports = (telebot) => {
+    telebot.on('callback_query', async (callbackQuery) => {
+        const msg = callbackQuery.message;
+        const chatId = msg.chat.id;
 
-//     for (const file of files) {
-//         let message = `Nama File: ${file.name}\n`;
-//         if (file.mimeType === 'application/pdf') {
-//             message += `Tipe: PDF\nLink: ${file.webViewLink}`;
-//         } else if (file.mimeType.includes('image')) {
-//             message += `Tipe: Gambar\nLink: ${file.webViewLink}`;
-//         }
+        const isLoggedIn = checkLoginStatus(chatId);
+        if (!isLoggedIn) {
+            await telebot.sendMessage(chatId, 'Anda belum login. Silakan login kembali dengan mengetik /start.');
+            return;
+        }
 
-//         await telebot.sendMessage(chatId, message);
-//     }
-// };
+        if (callbackQuery.data === 'api_kv') {
+            sessionManager.setUserStatus(chatId, { awaitingSaran: true });
+            await telebot.sendMessage(chatId, 'Mengambil 5 file terakhir yang diupload...');
 
-// // Add a callback handler for 'view_files'
-// telebot.on('callback_query', async (callbackQuery) => {
-//     const chatId = callbackQuery.message.chat.id;
-//     const data = callbackQuery.data;
+            try {
+                // Ambil hingga 5 file gambar terakhir dari Cloudinary
+                const imageResources = await cloudinary.api.resources({
+                    max_results: 5, // Batasi hingga 5 file
+                    type: 'upload',
+                    resource_type: 'image', 
+                });
 
-//     if (data === 'view_files') {
-//         await showDriveFiles(chatId, telebot);
-//     }
-// });
+                // Ambil hingga 5 file PDF terakhir dari Cloudinary
+                const pdfResources = await cloudinary.api.resources({
+                    max_results: 5, // Batasi hingga 5 file
+                    type: 'upload',
+                    resource_type: 'raw', 
+                });
+
+                // Gabungkan hasil yang ada
+                const allResources = [...imageResources.resources, ...pdfResources.resources];
+
+                // Cek apakah ada file yang ditemukan
+                if (allResources.length === 0) {
+                    await telebot.sendMessage(chatId, 'Tidak ada file yang ditemukan.');
+                } else {
+                    // Kirim hasil yang ditemukan ke pengguna
+                    let message = 'File terakhir yang diupload:\n';
+                    allResources.forEach((file, index) => {
+                        message += `${index + 1}. ${file.public_id}: ${file.secure_url}\n`;
+                    });
+                    await telebot.sendMessage(chatId, message);
+                }
+                
+                // Kembali ke menu fitur setelah menampilkan file
+                await featureSelection(chatId, telebot);
+            } catch (error) {
+                console.error('Error fetching resources:', error);
+                await telebot.sendMessage(chatId, 'Terjadi kesalahan saat mengambil file.');
+                await featureSelection(chatId, telebot);
+            }
+        }
+    });
+};

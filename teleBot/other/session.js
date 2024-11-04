@@ -6,11 +6,12 @@ module.exports = {
         loggedInUsers[chatId] = {
             ...(loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false, isStopped: false, wasExpired: false }),
             ...status,
-            timeout: loggedInUsers[chatId]?.timeout // Simpan timeout lama
+            timeout: loggedInUsers[chatId]?.timeout // Simpan timeout lama jika ada
         };
 
-        // Mengatur timeout sesi
+        // Jika pengguna login, atur ulang timeout sesi
         if (status.isLoggedIn) {
+            // Hapus timeout lama jika ada untuk menghindari tumpang tindih
             if (loggedInUsers[chatId].timeout) {
                 clearTimeout(loggedInUsers[chatId].timeout);
             }
@@ -24,9 +25,11 @@ module.exports = {
 
         console.log(`User status for chatId ${chatId} has been set.`);
     },
+
     getUserStatus: (chatId) => {
         return loggedInUsers[chatId] || { isLoggedIn: false, awaitingSaran: false, isStopped: false, wasExpired: false };
     },
+
     deleteUserStatus: (chatId) => {
         if (loggedInUsers[chatId]) {
             console.log(`Deleting session for chatId: ${chatId}`);
@@ -36,14 +39,17 @@ module.exports = {
             console.log(`No session found for chatId: ${chatId}`);
         }
     },
+
     isUserLoggedIn: (chatId) => {
         return !!loggedInUsers[chatId] && !loggedInUsers[chatId].isStopped;
     },
+
     stopUserSession: (chatId) => {
         if (loggedInUsers[chatId]) {
             loggedInUsers[chatId].isStopped = true;
         }
     },
+
     resetStoppedStatus: (chatId) => {
         if (loggedInUsers[chatId]) {
             loggedInUsers[chatId].isStopped = false;
