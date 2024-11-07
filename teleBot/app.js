@@ -1,4 +1,4 @@
-require('dotenv').config();
+//require('dotenv').config();
 const express = require('express');  // Import Express
 const mongoose = require('mongoose');
 const TelegramBot = require('node-telegram-bot-api');
