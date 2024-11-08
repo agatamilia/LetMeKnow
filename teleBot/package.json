@@ -13,13 +13,12 @@
     "body-parser": "^1.20.3",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.0.0"
+    "mongoose": "^7.0.0",
     "moment": "^2.30.1",
     "node-telegram-bot-api": "^0.66.0",
     "nodemon": "^3.1.7",
     "package": "^1.0.1",
     "puppeteer": "^23.4.1",
-    "telegram-webhook-js": "^1.0.4",
-    "mongoose": "^7.0.0"
+    "telegram-webhook-js": "^1.0.4"
   }
 }
